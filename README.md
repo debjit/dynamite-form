@@ -17,3 +17,8 @@
     - Secret Forms
     - Contact Forms from Multiple Sites (Using API Key)
     - Accept Public Comments
+
+
+### How this will work,
+Once a survey is saved and finished, the saved json will be used to make questions.
+After that, the survey will be released as usual. The response will be kept in a table.

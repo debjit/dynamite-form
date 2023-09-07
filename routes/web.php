@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+$form_segment = env('APP_FORM_SEGMENT');
 
 /*
 |--------------------------------------------------------------------------
@@ -15,4 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+Route::get("$form_segment/{uri}", function ($uri) {
+    dd($uri);
 });
