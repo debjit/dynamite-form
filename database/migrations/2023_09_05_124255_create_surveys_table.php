@@ -20,6 +20,7 @@ return new class extends Migration
             $table->boolean('is_member_only')->default(0);
             $table->string('pass')->nullable();
             $table->json('content');
+            $table->tinyInteger('status')->default(0);
             $table->timestamps();
         });
     }

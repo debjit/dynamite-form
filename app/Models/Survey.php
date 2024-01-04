@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Survey extends Model
 {
     use HasFactory;
+
+    public function getRouteKeyName() {
+        return 'url';
+      }
     protected $casts = [
         'content' => 'array',
         'boolean'=>'is_public',

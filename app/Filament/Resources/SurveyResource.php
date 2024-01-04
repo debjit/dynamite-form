@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\SurveyResource\Pages;
 use App\Filament\Resources\SurveyResource\RelationManagers;
 use App\Models\Survey;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms;
 use Filament\Forms\Components\Builder\Block;
@@ -12,6 +13,7 @@ use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Fieldset;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -28,12 +30,13 @@ use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use League\CommonMark\Input\MarkdownInput;
 
 class SurveyResource extends Resource
 {
     protected static ?string $model = Survey::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
 
     public static function form(Form $form): Form
     {
@@ -86,116 +89,7 @@ class SurveyResource extends Resource
                             ->schema([
                                 \Filament\Forms\Components\Builder::make('content')
                                     ->blocks([
-                                        Block::make('text')
-                                            ->schema([
-                                                Tabs::make('Label')
-                                                    ->tabs([
-                                                        Tabs\Tab::make('Question')
-                                                            ->schema([
-                                                                Checkbox::make('is_required'),
-                                                                // static::getFieldNameInput(),
-                                                                Textinput::make('question')
-                                                                    ->label('Your Question?')
-                                                                    ->required()
-                                                            ]),
-                                                        Tabs\Tab::make('Details')
-                                                            ->schema([
-                                                                Textarea::make('details'),
-                                                            ]),
-                                                        Tabs\Tab::make('Validation')
-                                                            ->schema([
-                                                                Checkbox::make('is_number'),
-                                                                Repeater::make('validation')
-                                                                    ->schema([
-                                                                        Select::make('type')
-                                                                            ->options([
-                                                                                'regx' => 'Add Regex Validation',
-                                                                                'minLength' => 'Minimum Length(in numbers)',
-                                                                                'maxLength' => 'Max Length(in numbers)',
-                                                                                'length' => 'Exact Length(in numbers)',
-                                                                            ]),
-                                                                        TextInput::make('validation_value'),
-                                                                    ])
-                                                                    ->defaultItems(0)
-                                                                    ->addActionLabel("Add another Validation")
-                                                                    ->label(' ')
-                                                                    ->columnSpan('full')
-                                                                    ->columns(2),
-                                                            ]),
-                                                        Tabs\Tab::make('Tutorial')
-                                                            ->schema([
-                                                                // Textarea::make('details'),
-
-                                                            ]),
-                                                    ]),
-                                            ])
-                                            ->icon('heroicon-o-pencil-square')
-                                            ->lazy()
-                                            ->label(function (?array $state): string {
-                                                if ($state === null) {
-                                                    return 'Heading';
-                                                }
-                                                // Todo: If required then add * in the names end
-                                                $res = $state['question'] ?? "";
-                                                if (!empty($state['is_required']) & !empty($state['question'])) {
-                                                    $res ="* ". $state['question'];
-                                                }
-                                                // return $state['question'] ?? 'Text Form Input';
-                                                return !empty($state['question']) ? $res : 'Text Form Input';
-                                            }),
-
-                                        Block::make('textarea')
-                                            // ->label('Text Area Input')
-                                            ->icon('heroicon-o-chat-bubble-left-right')
-                                            ->schema([
-                                                Textinput::make('question')
-                                                    ->label('Your Question?')
-                                                    ->required(),
-                                                Checkbox::make('is_required'),
-                                            ])
-                                            ->label(function (?array $state): string {
-                                                if ($state === null) {
-                                                    return 'Heading';
-                                                }
-                                                return $state['question'] ?? 'Textarea Form Input';
-                                            }),
-                                        // Block::make('textarea')
-                                        //     ->label('Text Area Input')
-                                        //     ->icon('heroicon-o-chat-bubble-left-right')
-                                        //     ->schema([
-                                        //         static::getFieldNameInput(),
-                                        //         Checkbox::make('is_required'),
-                                        //     ]),
-
-                                        Block::make('select')
-                                            ->icon('heroicon-o-chevron-up-down')
-                                            ->schema([
-                                                static::getFieldNameInput(),
-                                                KeyValue::make('options')
-                                                    ->label('Add option')
-                                                    ->addActionLabel("Add options")
-                                                    ->keyLabel('Value')
-                                                    ->required()
-                                                    ->valueLabel('Label'),
-                                                Checkbox::make('is_required')
-                                            ]),
-
-                                        Block::make('checkbox')
-                                            ->icon('heroicon-o-pencil-square')
-                                            ->schema([
-                                                static::getFieldNameInput(),
-                                                Checkbox::make('is_required'),
-                                            ]),
-                                        Block::make('file')
-                                            ->icon('heroicon-o-pencil-square')
-                                            ->schema([
-                                                static::getFieldNameInput(),
-                                                Grid::make()
-                                                    ->schema([
-                                                        Checkbox::make('is_multiple'),
-                                                        Checkbox::make('is_required'),
-                                                    ]),
-                                            ]),
+                                        self::formTextInput()
                                     ])
                                     // ->columnSpan('full')
                                     ->blockNumbers(false)
@@ -221,10 +115,181 @@ class SurveyResource extends Resource
             // Runs before the form fields are saved to the database.\
             $action->halt();
         });
+
         dd($this->all());
         // $form = \App\Models\Form::create($this->form->getState());
 
         // redirect()->route('form', ['form' => $form]);
+    }
+
+
+    static function formTextInput(): Block
+    {
+        return Block::make('text')
+            ->schema([
+                Tabs::make('Label')
+                    ->tabs([
+                        Tabs\Tab::make('Question')
+                            ->schema([
+                                Checkbox::make('is_required'),
+                                // static::getFieldNameInput(),
+                                Textinput::make('question')
+                                    ->label('Your Question?')
+                                    ->required()
+                            ]),
+                        // Tabs\Tab::make('Details')
+                        //     ->schema([
+                        //         Textarea::make('details'),
+                        //     ]),
+                        Tabs\Tab::make('Validation')
+                            ->schema([
+                                Checkbox::make('is_number'),
+                                Repeater::make('validation')
+                                    ->schema([
+                                        Select::make('type')
+                                            ->options([
+                                                'regx' => 'Add Regex Validation',
+                                                'minLength' => 'Minimum Length(in numbers)',
+                                                'maxLength' => 'Max Length(in numbers)',
+                                                'length' => 'Exact Length(in numbers)',
+                                            ]),
+                                        TextInput::make('value'),
+                                    ])
+                                    ->defaultItems(0)
+                                    ->addActionLabel("Add another Validation")
+                                    ->label(' ')
+                                    ->columnSpan('full')
+                                    ->columns(2),
+                            ]),
+                        Tabs\Tab::make('documentation')
+                            ->schema([
+                                MarkdownEditor::make('documentation')
+                            ])->label('Documentation'),
+                    ]),
+            ])
+            ->icon('heroicon-o-pencil-square')
+            ->lazy()
+            ->label(function (?array $state): string {
+                if ($state === null) {
+                    return 'Add Text';
+                }
+                $type = 'Text : ';
+                $res = !empty($state['question']) ? $type . $state['question']  : "";
+                if (!empty($state['is_required']) & !empty($state['question'])) {
+                    $res = "* " . $type . $state['question'];
+                }
+                return !empty($state['question']) ? $res : 'Add Text';
+            });
+    }
+    static function formTextareaInput(): Block
+    {
+        return Block::make('textarea')
+            // ->label('Text Area Input')
+            ->icon('heroicon-o-chat-bubble-left-right')
+            ->schema([
+                Textinput::make('question')
+                    ->label('Your Question?')
+                    ->required(),
+                Checkbox::make('is_required'),
+            ])
+
+            ->label(function (?array $state): string {
+                if ($state === null) {
+                    return 'Add Textarea';
+                }
+                $type = 'Textarea : ';
+                $res = !empty($state['question']) ? $state['question'] . $type : "";
+                if (!empty($state['is_required']) & !empty($state['question'])) {
+                    $res = "* " . $type . $state['question'];
+                }
+                return !empty($state['question']) ? $res : 'Add Textarea';
+            })
+            ->disabled(true);
+    }
+
+    static function formSelectInput(): Block
+    {
+        return Block::make('select')
+            ->icon('heroicon-o-chevron-up-down')
+            ->schema([
+                TextInput::make('question')
+                    ->lazy()
+                    ->afterStateUpdated(function ($set, $state) {
+                        $label = Str::of($state)
+                            ->kebab()
+                            ->replace(['-', '_'], ' ')
+                            ->ucfirst();
+                        $set('label', $label);
+                    })
+                    ->required(),
+                TextInput::make('label')
+                    ->required(),
+                KeyValue::make('options')
+                    ->label('Add option')
+                    ->addActionLabel("Add options")
+                    ->keyLabel('Value')
+                    ->required()
+                    ->valueLabel('Label'),
+                Checkbox::make('is_required')
+            ])
+            ->label(function (?array $state): string {
+                if ($state === null) {
+                    return 'Add Select';
+                }
+                $type = 'Select : ';
+                $res = !empty($state['question']) ? $state['question'] . $type : "";
+                if (!empty($state['is_required']) & !empty($state['question'])) {
+                    $res = "* " . $type . $state['question'];
+                }
+
+                return !empty($state['question']) ? $res : 'Add Select';
+            });
+    }
+
+    static function formCheckboxInput(): Block
+    {
+        return Block::make('checkbox')
+            ->icon('heroicon-o-squares-plus')
+            ->schema([
+                static::getFieldNameInput(),
+                Checkbox::make('is_required'),
+            ])
+            ->label(function (?array $state): string {
+                if ($state === null) {
+                    return 'Add Checkbox';
+                }
+                $type = 'Checkbox :';
+                $res = !empty($state['question']) ? $type . $state['question']  : "";
+                if (!empty($state['is_required']) & !empty($state['question'])) {
+                    $res = "* " . $type . $state['question'];
+                }
+                return !empty($state['question']) ? $res : 'Add Checkbox';
+            });
+    }
+
+    static function formFileuploadInput(): Block
+    {
+        return Block::make('file')
+            ->icon('heroicon-o-pencil-square')
+            ->schema([
+                static::getFieldNameInput(),
+                Grid::make()
+                    ->schema([
+                        Checkbox::make('is_multiple'),
+                        Checkbox::make('is_required'),
+                    ]),
+            ])
+            ->label(function (?array $state): string {
+                if ($state === null) {
+                    return 'Add File Upload';
+                }
+                $type = 'Upload :';
+                $res = !empty($state['question']) ? $state['question'] . $type : "";
+                if (!empty($state['is_required']) & !empty($state['question'])) {
+                    $res = "* " . $type . $state['question'];
+                }
+                return !empty($state['question']) ? $res : 'Add File Upload';
+            });
     }
 
     static function getFieldNameInput(): Grid
@@ -234,7 +299,7 @@ class SurveyResource extends Resource
 
         return Grid::make()
             ->schema([
-                TextInput::make('name')
+                TextInput::make('question')
                     ->lazy()
                     ->afterStateUpdated(function ($set, $state) {
                         $label = Str::of($state)
